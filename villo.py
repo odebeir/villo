@@ -1,8 +1,11 @@
 #!/usr/bin/python
 # #-*- coding: utf-8 -*-
 import urllib2
+import json
+
 from datetime import datetime
 import time
+import re
 
 def timeit(method):
 
@@ -20,25 +23,21 @@ def timeit(method):
 @timeit
 def fetch_villo():
     url = 'http://api.citybik.es/villo.json'
+
     h = urllib2.urlopen(url)
     html = h.read()
 
+    #fix JSON [see http://stackoverflow.com/a/4033740/410986 with a little modification in line 3]
+    fixed_html = html
+    fixed_html = re.sub(r"{\s*(\w)", r'{"\1', fixed_html)
+    fixed_html = re.sub(r",\s*(\w)", r',"\1', fixed_html)
+    fixed_html = re.sub(r"([a-z]):", r'\1":', fixed_html)
+
+    data = json.loads(fixed_html)
+
     station = {}
-    for station_str in html[1:-1].split('{'):
-        if station_str is not '':
-            data = {}
-            fields_str = station_str.split('}')[0].split(',')
-            for f in fields_str:
-                kv = f.split(':')
-                if kv[0] == ' timestamp':
-                    key = 'timestamp'
-                    value = ':'.join(kv[1:])
-                else:
-                    key = kv[0].strip()
-                    value = kv[1]
-                value = value.replace('"','')
-                data[key]=value
-            station[data['name']]=data
+    for d in data:
+        station[d['name']]=d
     return station
 
 if __name__ == '__main__':
